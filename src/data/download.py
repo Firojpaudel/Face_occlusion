@@ -13,7 +13,7 @@ import urllib.request
 import tarfile
 import yaml
 
-def download_openimages(data_dir, max_samples=15000):
+def download_openimages(data_dir, max_samples=5000):
     try:
         import fiftyone as fo
         import fiftyone.zoo as foz
@@ -28,6 +28,8 @@ def download_openimages(data_dir, max_samples=15000):
         return
 
     print(f"Downloading OpenImages v7 (max {max_samples} samples)...")
+    print("  Note: This downloads a large metadata CSV first (~2GB), then images.")
+    print("  Expected time: 15-40 min on Colab. If too slow, re-run with --skip-openimages.")
     # Only classes that exist in FiftyOne's OpenImages v7 vocabulary.
     # "Medical mask", "Motorcycle helmet", "Hard hat" do NOT exist in OI v7.
     # Those classes are covered by Roboflow datasets instead.
@@ -153,6 +155,12 @@ def download_lfw(data_dir):
 def main():
     parser = argparse.ArgumentParser(description="Download raw datasets for Face Accessory Detector")
     parser.add_argument("--config", default="config.yaml", help="Path to config.yaml")
+    parser.add_argument("--skip-openimages", action="store_true",
+                        help="Skip OpenImages download (slow). CelebA+Roboflow+LFW already give 88k+ images.")
+    parser.add_argument("--skip-roboflow", action="store_true",
+                        help="Skip Roboflow download (requires API key).")
+    parser.add_argument("--oi-samples", type=int, default=5000,
+                        help="Max OpenImages samples to download (default: 5000).")
     args = parser.parse_args()
 
     if Path(args.config).exists():
@@ -164,12 +172,24 @@ def main():
 
     Path(data_dir).mkdir(parents=True, exist_ok=True)
 
-    print("Starting Phase 1 — Dataset Acquisition...")
-    download_openimages(data_dir)
-    download_roboflow(data_dir)
+    print("Starting Phase 1 -- Dataset Acquisition...")
+    print("Data sources: OpenImages (supplementary), Roboflow (accessory labels),")
+    print("              CelebA (glasses/hat + negatives), LFW (clean negatives)")
+    print()
+
+    if args.skip_openimages:
+        print("[SKIP] OpenImages skipped via --skip-openimages flag.")
+    else:
+        download_openimages(data_dir, max_samples=args.oi_samples)
+
+    if args.skip_roboflow:
+        print("[SKIP] Roboflow skipped via --skip-roboflow flag.")
+    else:
+        download_roboflow(data_dir)
+
     download_celeba(data_dir)
     download_lfw(data_dir)
-    print("Dataset acquisition phase completed.")
+    print("\nDataset acquisition phase completed.")
 
 if __name__ == "__main__":
     main()
