@@ -4,9 +4,16 @@ Runs evaluation on the test set split, computes overall mAP, per-class AP,
 and sweeps predicted probabilities to find optimal per-class decision thresholds (maximizing F1).
 Outputs classification report containing precision, recall, and F1 scores.
 """
+import sys
+from pathlib import Path
+
+# Add project root to sys.path
+project_root = Path(__file__).resolve().parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 import argparse
 import yaml
-from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.metrics import average_precision_score, precision_recall_curve, classification_report

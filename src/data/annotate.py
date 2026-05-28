@@ -7,12 +7,19 @@ Annotation compilation and dataset splitting script.
 5. Splits dataset into 80% train, 10% val, 10% test.
 """
 import os
+import sys
+from pathlib import Path
+
+# Add project root to sys.path
+project_root = Path(__file__).resolve().parents[2]
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 import cv2
 import yaml
 import argparse
 import numpy as np
 import pandas as pd
-from pathlib import Path
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 

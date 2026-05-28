@@ -6,11 +6,18 @@ Model export and compilation module.
 4. Run a latency benchmark comparing PyTorch, ONNX CPU, and ONNX GPU backends.
 """
 import os
+import sys
+from pathlib import Path
+
+# Add project root to sys.path
+project_root = Path(__file__).resolve().parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 import yaml
 import argparse
 import time
 import subprocess
-from pathlib import Path
 import numpy as np
 
 import torch

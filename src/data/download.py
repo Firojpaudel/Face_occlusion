@@ -7,8 +7,15 @@ Downloads:
 4. LFW (clean face baseline, all negative labels).
 """
 import os
-import argparse
+import sys
 from pathlib import Path
+
+# Add project root to sys.path
+project_root = Path(__file__).resolve().parents[2]
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+import argparse
 import urllib.request
 import tarfile
 import yaml
@@ -109,7 +116,7 @@ def download_celeba(data_dir, max_samples=60000):
     celeba_dir.mkdir(parents=True, exist_ok=True)
     print(f"Downloading CelebA from Hugging Face (first {max_samples} samples)...")
     try:
-        celeba = load_dataset("nielsr/celeba-dataset", split="train", streaming=False)
+        celeba = load_dataset("tpremoli/CelebA-attrs", split="train", streaming=False)
     except Exception as e:
         print(f"⚠️ CelebA download failed: {e}. Trying secondary method/skipping.")
         return
@@ -121,12 +128,11 @@ def download_celeba(data_dir, max_samples=60000):
         img_path = celeba_dir / f"img_{i:06d}.jpg"
         sample["image"].save(img_path)
         
-        # Attribute mappings: 15 (Eyeglasses) -> glasses_clear, 35 (Wearing_Hat) -> cap_hat
-        attrs = sample["attributes"]
+        # Attribute mappings: Eyeglasses -> glasses_clear, Wearing_Hat -> cap_hat
         row = {
             "image_path": str(img_path),
-            "glasses_clear": 1 if attrs.get("Eyeglasses", 0) == 1 else 0,
-            "cap_hat": 1 if attrs.get("Wearing_Hat", 0) == 1 else 0,
+            "glasses_clear": 1 if sample.get("Eyeglasses", 0) == 1 else 0,
+            "cap_hat": 1 if sample.get("Wearing_Hat", 0) == 1 else 0,
         }
         rows.append(row)
         if i > 0 and i % 10000 == 0:
@@ -138,21 +144,16 @@ def download_celeba(data_dir, max_samples=60000):
 
 def download_lfw(data_dir):
     lfw_dir = Path(data_dir) / "raw" / "lfw"
-    if lfw_dir.exists() and any(lfw_dir.iterdir()):
+    if lfw_dir.exists() and any(lfw_dir.rglob("*.jpg")):
         print("✓ LFW already downloaded, skipping.")
         return
 
     lfw_dir.mkdir(parents=True, exist_ok=True)
-    tgz_path = lfw_dir / "lfw.tgz"
-    url = "http://vis-www.cs.umass.edu/lfw/lfw.tgz"
-
-    print("Downloading LFW dataset (clean faces baseline)...")
+    print("Downloading LFW dataset (clean faces baseline) via sklearn...")
     try:
-        urllib.request.urlretrieve(url, tgz_path)
-        print("Extracting LFW archive...")
-        with tarfile.open(tgz_path) as tar:
-            tar.extractall(path=lfw_dir)
-        tgz_path.unlink()  # delete tgz file to save space
+        from sklearn.datasets import fetch_lfw_people
+        # This will download and extract LFW into lfw_dir/lfw_home/lfw_funneled/
+        fetch_lfw_people(data_home=str(lfw_dir), color=True, download_if_missing=True)
         print("✓ LFW downloaded and extracted.")
     except Exception as e:
         print(f"⚠️ LFW download failed: {e}")

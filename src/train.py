@@ -6,11 +6,18 @@ Full training script.
 - Checkpoint saving (best and last) for seamless Colab crash-resumption.
 """
 import os
+import sys
+from pathlib import Path
+
+# Add project root to sys.path
+project_root = Path(__file__).resolve().parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
 import yaml
 import argparse
 import numpy as np
 import pandas as pd
-from pathlib import Path
 from tqdm import tqdm
 from sklearn.metrics import average_precision_score
 
