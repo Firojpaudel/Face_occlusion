@@ -1,0 +1,44 @@
+project: face_accessory_detector
+
+classes:
+  - glasses_clear
+  - glasses_tinted
+  - helmet_bike
+  - helmet_hard
+  - cap_hat
+  - beanie
+  - scarf_muffler
+  - face_mask
+  - face_shield
+  - balaclava
+
+num_classes: 10
+image_size: 224
+batch_size: 64
+epochs: 50
+lr: 0.001
+lr_scheduler: cosine
+warmup_epochs: 3
+weight_decay: 0.0001
+label_smoothing: 0.05
+pos_weight_multiplier: 2.0   # handles class imbalance in BCE loss
+
+face_detector: buffalo_s     # fast FaceAnalysis model name
+face_margin: 0.25            # padding around face bbox
+min_face_size: 40            # skip faces smaller than 40px
+
+data_dir: data/
+output_dir: outputs/
+device: cuda                 # cuda or cpu
+
+# Augmentation probabilities
+aug:
+  horizontal_flip: 0.5
+  brightness_contrast: 0.4
+  hue_saturation: 0.3
+  motion_blur: 0.2
+  perspective: 0.3
+  shadow: 0.2
+  coarse_dropout: 0.2
+  jpeg_compression: 0.3
+  gaussian_noise: 0.2
