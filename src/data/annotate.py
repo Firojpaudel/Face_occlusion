@@ -71,7 +71,7 @@ def process_celeba(data_dir, all_rows):
         r.update(labels)
         all_rows.append(r)
 
-def process_lfw(data_dir, face_app, all_rows, max_negatives=8000):
+def process_lfw(data_dir, face_app, face_model_name, all_rows, max_negatives=8000):
     lfw_raw_dir = Path(data_dir) / "raw" / "lfw"
     if not lfw_raw_dir.exists():
         print("[SKIP] LFW directory not found.")
@@ -82,6 +82,9 @@ def process_lfw(data_dir, face_app, all_rows, max_negatives=8000):
     crops_dir.mkdir(parents=True, exist_ok=True)
     
     lfw_images = list(lfw_raw_dir.rglob("*.jpg"))[:max_negatives]
+    if not lfw_images:
+        print("  [SKIP] No .jpg images found in LFW directory.")
+        return
     
     from src.data.preprocess import extract_face_crops
     records = extract_face_crops(
@@ -89,7 +92,7 @@ def process_lfw(data_dir, face_app, all_rows, max_negatives=8000):
         str(crops_dir), 
         margin=0.25, 
         min_face_px=40,
-        face_model=face_app.name
+        face_model=face_model_name
     )
 
     for rec in records:
@@ -422,7 +425,7 @@ def main():
     face_app = load_face_detector(face_model)
 
     process_celeba(data_dir, all_rows)
-    process_lfw(data_dir, face_app, all_rows)
+    process_lfw(data_dir, face_app, face_model, all_rows)
     process_roboflow(data_dir, face_app, all_rows)
     process_openimages(data_dir, face_app, all_rows)
 
