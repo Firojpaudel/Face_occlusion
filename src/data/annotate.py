@@ -343,7 +343,7 @@ def process_openimages(data_dir, face_app, all_rows):
             continue
 
         detections = []
-        if sample.detections and sample.detections.detections:
+        if sample.has_field("detections") and sample.detections is not None:
             detections = sample.detections.detections
 
         try:
