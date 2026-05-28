@@ -21,7 +21,7 @@ def download_openimages(data_dir, max_samples=5000):
         print("[SKIP] fiftyone is not installed. Install it to download OpenImages.")
         return
 
-    oi_dir = Path(data_dir) / "raw" / "openimages"
+    oi_dir = Path(data_dir) / "raw" / "open-images-v7"
     done_flag = oi_dir / "done.flag"
     if done_flag.exists():
         print("✓ OpenImages already downloaded, skipping.")
@@ -30,6 +30,11 @@ def download_openimages(data_dir, max_samples=5000):
     print(f"Downloading OpenImages v7 (max {max_samples} samples)...")
     print("  Note: This downloads a large metadata CSV first (~2GB), then images.")
     print("  Expected time: 15-40 min on Colab. If too slow, re-run with --skip-openimages.")
+    
+    # Configure FiftyOne's zoo directory globally to point to our local data/raw
+    # This is a sure fix for 'TypeError: build_dataset_importer() got multiple values for keyword argument 'dataset_dir''
+    fo.config.dataset_zoo_dir = str(Path(data_dir) / "raw")
+
     # Only classes that exist in FiftyOne's OpenImages v7 vocabulary.
     # "Medical mask", "Motorcycle helmet", "Hard hat" do NOT exist in OI v7.
     # Those classes are covered by Roboflow datasets instead.
@@ -44,8 +49,8 @@ def download_openimages(data_dir, max_samples=5000):
         label_types=["detections"],
         classes=oi_classes,
         max_samples=max_samples,
-        dataset_dir=str(oi_dir),
     )
+    oi_dir.mkdir(parents=True, exist_ok=True)
     done_flag.touch()
     print(f"✓ OpenImages download complete. Loaded {len(dataset)} images.")
 

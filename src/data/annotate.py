@@ -277,6 +277,122 @@ def split_and_save(ann_path, splits_dir):
     print(f"\nSplits saved in {splits_dir}:")
     print(f"  Train: {len(train_df)} | Val: {len(val_df)} | Test: {len(test_df)}")
 
+def process_openimages(data_dir, face_app, all_rows):
+    oi_raw_dir = Path(data_dir) / "raw" / "open-images-v7"
+    if not oi_raw_dir.exists():
+        print("[SKIP] OpenImages raw directory not found.")
+        return
+
+    try:
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+    except ImportError:
+        print("[SKIP] fiftyone is not installed. Install it to process OpenImages.")
+        return
+
+    print("Processing OpenImages annotations...")
+    
+    # Configure global zoo directory so fiftyone finds the dataset
+    fo.config.dataset_zoo_dir = str(Path(data_dir) / "raw")
+
+    try:
+        oi_classes = [
+            "Human face", "Sunglasses", "Helmet", "Hat",
+            "Scarf", "Bicycle helmet", "Goggles"
+        ]
+        dataset = foz.load_zoo_dataset(
+            "open-images-v7",
+            split="train",
+            label_types=["detections"],
+            classes=oi_classes,
+        )
+    except Exception as e:
+        print(f"  ⚠️ Could not load FiftyOne dataset: {e} — skipping.")
+        return
+
+    crops_dir = Path(data_dir) / "crops"
+    crops_dir.mkdir(parents=True, exist_ok=True)
+
+    OI_MAP = {
+        "Sunglasses": "glasses_tinted",
+        "Helmet": "helmet_hard",
+        "Bicycle helmet": "helmet_bike",
+        "Hat": "cap_hat",
+        "Scarf": "scarf_muffler",
+        "Goggles": "glasses_clear",
+    }
+
+    print(f"  Found {len(dataset)} samples in OpenImages v7.")
+    for sample in tqdm(dataset, desc="OpenImages"):
+        img_path = Path(sample.filepath)
+        if not img_path.exists():
+            continue
+
+        img = cv2.imread(str(img_path))
+        if img is None:
+            continue
+
+        detections = []
+        if sample.detections and sample.detections.detections:
+            detections = sample.detections.detections
+
+        try:
+            faces = face_app.get(img)
+        except Exception:
+            continue
+
+        h, w = img.shape[:2]
+
+        for idx, face in enumerate(faces):
+            fx1, fy1, fx2, fy2 = face.bbox.astype(int)
+            fbw, fbh = fx2 - fx1, fy2 - fy1
+            if fbw < 40 or fbh < 40:
+                continue
+
+            labels = empty_labels()
+
+            for det in detections:
+                label = det.label
+                our_cls = OI_MAP.get(label)
+                if not our_cls:
+                    continue
+
+                rx, ry, rw, rh = det.bounding_box
+                dx1, dy1 = int(rx * w), int(ry * h)
+                dx2, dy2 = int((rx + rw) * w), int((ry + rh) * h)
+
+                ix1 = max(fx1, dx1)
+                iy1 = max(fy1, dy1)
+                ix2 = min(fx2, dx2)
+                iy2 = min(fy2, dy2)
+
+                inter_w = max(0, ix2 - ix1)
+                inter_h = max(0, iy2 - iy1)
+                inter_area = inter_w * inter_h
+                det_area = (dx2 - dx1) * (dy2 - dy1)
+
+                if det_area > 0 and (inter_area / det_area) > 0.4:
+                    labels[our_cls] = 1
+
+            mx, my = int(fbw * 0.25), int(fbh * 0.25)
+            x1c = max(0, fx1 - mx)
+            y1c = max(0, fy1 - my)
+            x2c = min(w, fx2 + mx)
+            y2c = min(h, fy2 + my)
+
+            crop = img[y1c:y2c, x1c:x2c]
+            if crop.size == 0:
+                continue
+
+            crop_resized = cv2.resize(crop, (224, 224), interpolation=cv2.INTER_AREA)
+            name = f"oi_{img_path.stem}_f{idx}.jpg"
+            out_path = crops_dir / name
+            cv2.imwrite(str(out_path), crop_resized)
+
+            r = {"crop_path": str(out_path)}
+            r.update(labels)
+            all_rows.append(r)
+
 def main():
     parser = argparse.ArgumentParser(description="Compile annotations and build dataset splits")
     parser.add_argument("--config", default="config.yaml", help="Path to config.yaml")
@@ -301,6 +417,7 @@ def main():
     process_celeba(data_dir, all_rows)
     process_lfw(data_dir, face_app, all_rows)
     process_roboflow(data_dir, face_app, all_rows)
+    process_openimages(data_dir, face_app, all_rows)
 
     if not all_rows:
         print("[ERROR] No annotations were gathered. Check raw data paths.")
