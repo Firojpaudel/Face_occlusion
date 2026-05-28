@@ -28,9 +28,12 @@ def download_openimages(data_dir, max_samples=15000):
         return
 
     print(f"Downloading OpenImages v7 (max {max_samples} samples)...")
+    # Only classes that exist in FiftyOne's OpenImages v7 vocabulary.
+    # "Medical mask", "Motorcycle helmet", "Hard hat" do NOT exist in OI v7.
+    # Those classes are covered by Roboflow datasets instead.
     oi_classes = [
-        "Sunglasses", "Helmet", "Hat", "Scarf",
-        "Medical mask", "Motorcycle helmet", "Hard hat", "Bicycle helmet"
+        "Human face", "Sunglasses", "Helmet", "Hat",
+        "Scarf", "Bicycle helmet", "Goggles"
     ]
 
     dataset = foz.load_zoo_dataset(
